@@ -1,0 +1,67 @@
+    <style>
+        @font-face {
+            font-family: PTF55F;
+            src: url('PTF55F.ttf');
+        }
+        body{
+            background-color: #E6E6E6;
+            font-family:monospace;
+            position:center;
+        }
+        .start{
+            text-align: center;
+            color:#424242;
+            left:47.2%; 
+        }
+        .Button{
+            border:none;
+            height:30;
+            width:200;
+            color:#424242;
+            border-bottom-left-radius:6px;
+            border-bottom-right-radius:6px;
+            font-family:monospace;
+        }
+        .username{
+            border:none;
+            height:30;
+            width:200;
+            color:#424242;
+            border-top-left-radius:6px;
+            border-top-right-radius:6px;
+            font-family:monospace;
+        }
+        .password{
+            border:none;
+            height:30;
+            width:200;
+            color:#424242;
+            font-family:monospace;
+        }
+        input{
+            line-height: normal;
+        }
+        .form{
+            position:absolute;
+            margin-top:40;
+            margin-left: auto;
+            margin-right: auto;
+            left:44.5%; 
+        }
+        .footer{
+            position:fixed;
+            background-color:#848484;
+            bottom:0;
+            height:5%;
+            width:100%;
+            left: 0;
+            display:block;
+        }
+        .end{
+            position:absolute;
+            top:5px;
+            left:47%;
+            font-family:monospace;
+            color:#E6E6E6;
+        }
+    </style>

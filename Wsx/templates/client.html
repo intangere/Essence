@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Web Socket Example</title>
+    <meta charset="UTF-8">
+    <script>
+      window.onload = function() {
+        var s = new WebSocket("ws://localhost:{{port}}/");
+        function updateHtml(content) {
+          var text = document.getElementById("data");
+          text.innerHTML = text.innerHTML + content + "<br>";
+        }
+        s.onopen = function(e) { 
+            s.send("{{ID}}");
+          updateHtml("WebSocket Opened!");
+        }
+        s.onmessage = function(e) { 
+          //updateHtml("Data recv: " + e.data + "<br>");
+          updateHtml(e.data + "<br>");
+        }
+        s.onclose = function(e) { 
+          updateHtml("WebSocket Closed<br>"); 
+        }
+        window.getCookie = function(name) {
+          match = document.cookie.match(new RegExp(name + '=([^;]+)'));
+          if (match) return match[1];
+          }
+      };
+    </script>
+  </head>
+    <body>
+      <div id="holder" style="width:600px; height:300px">
+      <p>Websocket port = {{port}}</p>
+      <p id="data">Welcome {{ID}}<br></p>
+      </div>
+    </body>
+</html>

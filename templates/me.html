@@ -1,0 +1,129 @@
+<html>
+  <head>
+    <title>
+        Essance Chat | Chat
+    </title>
+    <script>
+      window.onload = function() {
+        var s = new WebSocket("ws://localhost:{{port}}/");
+        function updateHtml(content) {
+          var text = document.getElementById("data");
+          text.innerHTML = text.innerHTML + content + "<br>";
+        }
+        s.onopen = function(e) { 
+            s.send("{{ID}}");
+          updateHtml("WebSocket Opened!");
+        }
+        s.onmessage = function(e) { 
+          //updateHtml("Data recv: " + e.data + "<br>");
+          updateHtml(e.data + "<br>");
+        }
+        s.onclose = function(e) { 
+          updateHtml("WebSocket Closed<br>"); 
+        }
+        window.getCookie = function(name) {
+          match = document.cookie.match(new RegExp(name + '=([^;]+)'));
+          if (match) return match[1];
+          }
+      };
+    </script>
+    <style>
+        .send{
+            border:none;
+            position:fixed;
+            display:block;
+            height:5%;
+            background-color:#FAFAFA;
+            color:#585858;
+            width:30%;
+            z-index:1;
+            right:0;
+            bottom:0;
+            font-size:30px;
+        }
+        .msgbox{
+            position:fixed;
+            background-color:#848484;
+            color:#FAFAFA;
+            bottom:0;
+            height:5%;
+            width:70%;
+            left:0;
+            z-index:-1;
+            font-family:monospace;
+            border:none;
+            display:block;
+            font-size:30px;
+        }
+        body{
+            background-color: #E6E6E6;
+            font-family:monospace;
+            position:center;
+        }
+        .chatbar{
+            position:absolute;
+            bottom:0;
+            left:20%;
+            height:40px;
+            font-family:monospace;
+        }
+        .chatmsgs p{
+            display: inline-block;
+        }
+        .chatmsgs{
+            position:fixed;
+            left:5%;
+        }
+        .userlist{
+            top:0;
+            position:fixed;
+            right:0;
+            width:29.9%;
+            height:94.75%;
+            border:none;
+            border-left: solid 3px #848484;
+            border-bottom: solid 3px #848484;
+        }
+        .userlist p{
+            margin-left: 40%;
+            display:inline;
+            font-size:30px;
+        }
+        .messages{
+            display:block;
+            height:40px;
+            border-top-left-radius:3px;
+            border-bottom-left-radius:3px;
+            border-bottom-right-radius:3px;
+            border-top-right-radius:3px;
+            background-color:#FAFAFA;
+            width:auto;
+            font-size:30px;
+        }
+        .username{
+            font-size:30px;
+        }
+    </style>
+  </head>
+  <body>
+    <p>Your Public Key: {{ pubkey }} | Connected to Essence: (?)</p>
+    <hr>
+      <div class='userlist'>
+          <p>Contacts&nbsp;&nbsp;<b>+</b></p>
+          {% for contact in contacts %}
+            <p>{{ contact }}</p>
+            <hr
+          {% endfor %}
+      </div>
+      <div class='chatmsgs'>
+          <div><p class='username'>Bobby &nbsp;</p><p class='messages'>&nbsp;Hey there Jimmy!&nbsp;</p><br></div>
+          <div><p class='username'>Jimmy &nbsp;</p><p class='messages'>&nbsp;Hey there fatass&nbsp;</p><br></div>
+      </div>
+      <div class='chatbar'>
+          <form action='' method='post'>
+              <input type='submit' class='send' name='send' value='Send'>
+              <input type='text' class='msgbox' name='message'>
+          </form>
+      </div>
+  </body>
+
