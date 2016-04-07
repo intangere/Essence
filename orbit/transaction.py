@@ -3,34 +3,57 @@ from orbit.server import WebSocketConnection
 import string
 from random import choice
 
-
-class State(object):
-	def __init__(self):
-		self.transaction = None
-
-	def loadTransaction(self, transaction):
+class WSProtocol(object):
+	def __init__(self, transaction):
+		# note-- this is a circular reference, which is probably acceptable since a transaction shouldn't
+		# ever be disposed while it still has connections associated with it, however keep in mind this
+		# means the transaction/protocols will be stuck in scope if a protocol ever leaks
 		self.transaction = transaction
+		self.ws = None
 
-	def onNewConnection(self, ws):
+	def makeConnection(self, ws):
+		self.ws = ws
+		self.connectionMade(ws)
+
+	def connectionMade(self, ws):
 		pass
 
-	def onUpdate(self, ws, opcode, data, fin):
+	def dataReceived(self, opcode, data):
 		pass
 
-	def onEndConnection(self, ws):
+	def connectionEnd(self):
 		pass
+
+	def disconnect(self):
+		self.transaction.connections[self].transport.abortConnection()
 
 class Transaction(object):
-	def __init__(self, stateObject, reverseProxyHeader=None):
-		self.websockets = []
-		self.state = stateObject
-		self.state.loadTransaction(self)
+	def __init__(self, protocol, reverseProxyHeader=None):
+		self.protocol = protocol
+		# map of protocol: underlying ws connection
+		self.connections = {}
+
 		self.finished = Deferred()
 		self.reverseProxyHeader = reverseProxyHeader
 
+		self.initialize()
+
+	# convenience method to avoid having to call parent __init__
+	def initialize(self):
+		pass
+
+	def _proto_disconnected(self, ws, proto):
+		# TODO: is ws even available for writing here? this connection is presumably already terminated
+		proto.connectionEnd(ws)
+		del self.connections[proto]
+
 	def getWebSocket(self, request):
 		transport, request.transport = request.transport, None
-		protocol = WebSocketConnection(self.state)
+
+		p = self.protocol(self)
+
+		protocol = WebSocketConnection(p)
+		self.connections[p] = protocol
 		transport.protocol = protocol
 
 		if self.reverseProxyHeader is not None:
@@ -38,41 +61,21 @@ class Transaction(object):
 		else:
 			protocol.ip = transport.getPeer().host
 
-		def handle_dc(obj):
-			if obj in self.websockets:
-				self.websockets.remove(obj)
-				self.state.onEndConnection(obj)
-			return obj
-		protocol.finished.addCallback(handle_dc)
-		self.websockets.append(protocol)
+		protocol.finished.addCallback(self._proto_disconnected)
 		protocol.makeConnection(transport)
-		self.state.onNewConnection(protocol)
+
+		p.makeConnection(protocol)
+
 		protocol.pingLoop.start(20.0)
 
 		return protocol
 
-	def endWebSocket(self, websocket):
-		if websocket.connected:
-			websocket.transport.loseConnection()
-		self.websockets.remove(websocket)
-		self.state.onEndConnection(websocket)
-
-	def getWebSockets(self, prerequisite = lambda x: True):
-		for ws in self.websockets:
-			if prerequisite(ws):
-				yield ws
-
-	def sendUpdate(self, data, prerequisite = lambda x: True):
-		for ws in self.websockets:
-			if not ws.connected:
-				continue
-			if not prerequisite(ws):
-				continue
-			ws.write(data)
-
 	def finish(self):
-		for val in self.websockets:
-			val.transport.loseConnection()
+		for connection in self.connections.values():
+			connection.transport.loseConnection()
+
+		self.connections = {}
+
 		self.finished.callback(self)
 
 

@@ -1,5 +1,3 @@
-import pyximport 
-pyximport.install()
 from twisted.web.resource import Resource
 import sys
 from twisted.web.static import File

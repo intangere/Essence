@@ -22,8 +22,8 @@ class IWebSocketFrameReceiver(Interface):
 	def closeReceived(opcode, statusCode, statusMessage):
 		'''
 		Callback when a status is received
-		:param opcode: WS opcode received (defined in framing.pyx)
-		:param statusCode: Status code received (defined in framing.pyx)
+		:param opcode: WS opcode received (defined in framing.py)
+		:param statusCode: Status code received (defined in framing.py)
 		:param statusMessage: Status message received.
 		'''
 
@@ -41,8 +41,8 @@ class WebSocketTransport(object):
 		self.parentTransport = transport
 
 
-	def sendFrame(self, opcode, data, fin):
-		packet = buildFrame(opcode, data, fin=fin)
+	def sendFrame(self, opcode, data):
+		packet = buildFrame(opcode, data)
 		self.parentTransport.write(packet)
 
 
@@ -68,8 +68,9 @@ class WebSocketProtocol(Protocol):
 		:return:
 		'''
 		self.receiver = receiver
-		self._buffer = ''
+		self._buffer = b''
 		self.pingDeferred = Deferred()
+		self.shit = 0
 
 	def connectionMade(self):
 		peer = self.transport.getPeer()
@@ -78,10 +79,8 @@ class WebSocketProtocol(Protocol):
 
 
 	def _parseBuffer(self):
+
 		for opcode, data, (statusCode, statusMessage), fin in parseFrames(self._buffer):
-			if opcode == -1:
-				self._buffer = data
-				return
 			if opcode == CLOSE:
 				# Close the connection
 				self.receiver.closeReceived(statusCode, statusMessage)
@@ -90,15 +89,15 @@ class WebSocketProtocol(Protocol):
 			elif opcode == PONG:
 				pass # TODO - add ping functionality onto the protocol
 			elif opcode == PING:
-				self.transport.write(buildFrame(PONG, data, fin=True))
+				self.transport.write(buildFrame(PONG, data))
 			else:
-				self.receiver.frameReceived(opcode, data, fin)
-
+				self.receiver.frameReceived(opcode, data)
 
 	def dataReceived(self, data):
 		self._buffer += data
 		try:
 			self._parseBuffer()
-		except :
+			self._buffer = b''
+		except:
 			log.err()
 			self.transport.loseConnection()

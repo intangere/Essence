@@ -18,8 +18,8 @@ class WebSocketReceiver(object):
 	def closeReceived(self, statusCode, statusMessage):
 		pass
 
-	def frameReceived(self, opcode, data, fin):
-		self.connection.state.onUpdate(self.connection, opcode, data, fin)
+	def frameReceived(self, opcode, data):
+		self.connection.state.dataReceived(opcode, data)
 
 
 class WebSocketConnection(WebSocketProtocol):
@@ -31,10 +31,13 @@ class WebSocketConnection(WebSocketProtocol):
 		self.pingLoop = LoopingCall(self.doPing)
 
 	def doPing(self):
-		self.receiver.transport.sendFrame(PING, '', fin=True)
+		self.receiver.transport.sendFrame(PING, '')
 
 	def write(self, data):
-		self.receiver.transport.sendFrame(self.opcode, data, fin=True)
+		self.receiver.transport.sendFrame(self.opcode, data)
+
+	def sendFrame(self, opcode, data):
+		self.receiver.transport.sendFrame(opcode, data)
 
 	def writeSequence(self, data):
 		for chunk in data:
@@ -47,6 +50,8 @@ class WebSocketConnection(WebSocketProtocol):
 
 @implementer(IResource)
 class WebSocketResource(object):
+	# keyword is the name of the HTTP GET parameter used to look up a transaction, if one is needed
+	# lookup is a function that accepts the result of the keyword param and returns a Transaction object or throws an exception if none is found
 	def __init__(self, lookup, keyword=None):
 		self.lookup = lookup
 		self.keyword = keyword
@@ -81,7 +86,7 @@ class WebSocketResource(object):
 			failed = True
 		request.setHeader('Sec-WebSocket-Version', '13')
 
-		transaction = self.lookup(request.args[self.keyword][0] if (request.args.has_key(self.keyword) and self.keyword is not None) else None)
+		transaction = self.lookup(request.args[self.keyword][0] if (self.keyword is not None and request.args.has_key(self.keyword)) else None)
 
 		if failed:
 			request.setResponseCode(400)
