@@ -229,7 +229,7 @@ def create_acc():
 		f.write(base64.b64encode(aes.encryptData(pwd, str(memory['g']))))
 		f.close()
 		f = open('contacts.py' , 'w+')
-		f.write('contacts = {\'Me\' : "'%s'"}' % memory['pub'])
+		f.write('contacts = {\'Me\' : \'%s\'}' % memory['pub'])
 		f.close()
 		contacts = {'Me' : memory['pub']}
 		log('INFO', 'Your Essence account is ready for use.')
