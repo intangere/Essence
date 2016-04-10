@@ -37,29 +37,6 @@ webSocket.config({'origin_port' : 8888,
 				  'websocket_port' : 8976
 				})
 
-@webSocket.onConnect #Handle the webSocket Connection, return Client() obj if auth successful
-def handler(*args, **kwargs): #Handle the client connection, do whatever you want here
-	ID = args[0]
-	client = args[1]
-	connected = True
-	while connected:
-		data = client.sock.recv(1024)
-		if data:
-			data = data.strip()
-		else:
-			connected = False
-
-	del webSocket.clients[ID]
-	webSocket.log("INFO", "Connection with %s ended" % ID)
-
-def loop():
-	webSocket.running = True
-	while webSocket.running:
-		handler()
-		webSocket.log("INFO","Handler initiated")
-
-p = Process(target=loop, args=()).start()
-
 memory = {'pub' : '',
 		  'priv' : '',
 		  'params' : '',
@@ -117,6 +94,7 @@ def connectionLoop():
     memory['s'].send('auth-req %s\r\n' % (memory['pub']))
     buffer = ""
     while True:
+      print buffer
       if '\r\n' not in buffer:
         buffer = buffer + memory['s'].recv(1)
       else:
@@ -131,7 +109,7 @@ def connectionLoop():
           authRequest(data)
         elif 'auth-success' in data:
           setAuthTrue()
-
+	  memory['s'].send("BALLS\r\n")
 def exit():
     s.close()
     log("INFO", "All connections killed.")
@@ -139,13 +117,17 @@ def exit():
     sys.exit(1)   
 
 def sendMessage(line):
+    print memory['s']  
+    print line
+    memory['s'].send('balls\r\n')
     if contacts.has_key(line.split(' ', 1)[1].split(' ', 1)[0]):
-      line = 'message %s %s' % (contacts[line.split(' ', 1)[1].split(' ', 1)[0]], line.split(' ', 1)[1].split(' ', 1)[1])
+      line = 'message %s %s'.strip() % (contacts[line.split(' ', 1)[1].split(' ', 1)[0]], line.split(' ', 1)[1].split(' ', 1)[1])
+    print line
     reciever, params = base64.b64decode(line.split(' ', 1)[1].split(' ', 1)[0][2:]).split('|')
     reciever, params = eval(reciever), eval(params)
     reciever_plain = line.split(' ',1 )[1].split(' ', 1)[0].split(' ')[0][2:]
     msg = line.split(' ',1)[1].split(' ', 1)[1]
-    s.send('message|%s|%s|%s\r\n' % (memory['pub'], reciever_plain, n.encryptParts(params, reciever, n.splitNthChar(1, base64.b64encode(msg)))))
+    memory['s'].send('message|%s|%s|%s\r\n' % (memory['pub'], reciever_plain, n.encryptParts(params, reciever, n.splitNthChar(1, base64.b64encode(msg)))))
 
 def addContact(line):
     user, pub_key = line.split(' ')[1].strip(), line.split(' ')[2].strip()
@@ -192,10 +174,10 @@ def me():
 		return redirect('/')
 	ID = ''.join(random.SystemRandom().choice(
 					   string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(20))
-	webSocket.createID(ID)
 	if memory['authenticated'] == False:
 		thread.start_new_thread(connectionLoop, ())
-	return render_template('me.html', ID=ID, port=webSocket.websocket_port, pubkey = memory['pub'], contacts = contacts.keys())
+	webSocket.createID(ID)
+	return render_template('me.html', ID=ID, port=webSocket.websocket_port, pubkey = memory['pub'], contacts = contacts)
 
 @app.route('/')
 def index():
@@ -229,7 +211,7 @@ def create_acc():
 		f.write(base64.b64encode(aes.encryptData(pwd, str(memory['g']))))
 		f.close()
 		f = open('contacts.py' , 'w+')
-		f.write('contacts = {\'Me\' : \'%s\'}' % memory['pub'])
+		f.write('contacts = {\'Me\' : \'Ex%s\'}' % memory['pub'])
 		f.close()
 		contacts = {'Me' : memory['pub']}
 		log('INFO', 'Your Essence account is ready for use.')
@@ -260,7 +242,8 @@ def get_styles_css():
 
 @app.route('/favicon.ico')	
 def get_favicon():
-	return send_file("images/favicon.ico", mimetype='image/ico')
+	return "x"
+	#return send_file("images/favicon.ico", mimetype='image/ico')
 
 
 @app.route('/notes', methods=['get'])
@@ -272,53 +255,9 @@ def note():
 	else:
 		return render_template('post_note.html')
 
-@app.route('/add_contact', methods=['post']) #Handle every post request
-def process_post():
-	post_type = request.form['type']
-	if post_funcs.has_key(post_type):
-		args = []
-		try:
-			args.append(request.form['username'])
-		except Exception as e:
-			args.append("test")
-		try:
-			args.append(request.form['content'])
-		except Exception as e:
-			print e
-			return render_template('problem.html')
-		result = post_funcs[post_type](args[0], args[1])
-	return render_template('process.html', result = result)
-
 @app.route('/problem')
 def problem():
 	return render_template('problem.html') 
-
-
-@app.route('/send', methods=['POST'])
-def send_message():
-	print request
-	if(check_user(request)):
-		#return redirect('/me')
-		print "dicked on"
-		return 'success'
-	else:
-		print "fuce"
-		return render_template('problem.html') 
-
-@app.route('/del_contact', methods=['POST'])
-def del_contact():
-	if (request.form.has_key('username') and (request.form.has_key('password')) and (request.form['password'] == request.form['confirm-pass'])):
-		username = request.form['username']
-		password = passToAesKey(request.form['password'])
-		auth_id = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(random.randint(0, 20)))
-		enc_auth_id = base64.b64encode(aes.encryptData(password,auth_id))
-		res = addUser(username, auth_id, enc_auth_id)
-		if res == False:
-			return render_template('problem.html') #Too lazy to setup username in use page.
-		else:
-			return render_template('success.html', user=username)
-	else:
-		return render_template('problem.html')
 
 @app.route("/shutdown", methods=["GET"])
 def logout():
@@ -336,4 +275,31 @@ def shred():
     logout_user()
     return render_template("/login.html")
 
+
+@webSocket.onConnect #Handle the webSocket Connection, return Client() obj if auth successful
+def handler(*args, **kwargs): #Handle the client connection, do whatever you want here
+	ID = args[0]
+	client = args[1]
+	connected = True
+	memory['s'].sendall("BIG BALLS\0")
+	while connected:
+		data = webSocket.decodeBytes(client.sock.recv(1024))
+		if data:
+			sendMessage(data)
+			print data
+		else:
+			connected = False
+
+	del webSocket.clients[ID]
+	webSocket.log("INFO", "Connection with %s ended" % ID)
+
+
+def loop():
+	webSocket.running = True
+	webSocket.log("INFO","Handler initiated")
+	while webSocket.running:
+		handler()
+
+
+p = Process(target=loop, args=()).start()
 app.config["SECRET_KEY"] = "jw09mrhcw0e8agv0a8fmsgd08vfag0sfmd0"

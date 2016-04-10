@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <script>
       window.onload = function() {
-        var s = new WebSocket("ws://localhost:{{port}}/");
+        var s = new WebSocket("ws://127.0.0.1:{{port}}/");
+        //s.send("{{ID}}");
         function updateHtml(content) {
           var text = document.getElementById("data");
           text.innerHTML = text.innerHTML + content + "<br>";

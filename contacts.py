@@ -1,1 +1,1 @@
-contacts = {}
+contacts = {'Me' : 'ExWzM0MDg4MkwsIDk1NzU2TCwgODA4ODM2TCwgMjg4MDU4TCwgOTQ4MDFMLCAyMzQ2NzhMLCA4Mzc0OTdMXXxbNywgODMsIDk1MjE2M10='}

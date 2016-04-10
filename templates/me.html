@@ -4,28 +4,42 @@
         Essance Chat | Chat
     </title>
     <script>
+      var contact = "None";
+        var s = new WebSocket("ws://127.0.0.1:{{port}}/");
       window.onload = function() {
-        var s = new WebSocket("ws://localhost:{{port}}/");
         function updateHtml(content) {
           var text = document.getElementById("data");
           text.innerHTML = text.innerHTML + content + "<br>";
         }
-        s.onopen = function(e) { 
-            s.send("{{ID}}");
-          updateHtml("WebSocket Opened!");
-        }
         s.onmessage = function(e) { 
           //updateHtml("Data recv: " + e.data + "<br>");
-          updateHtml(e.data + "<br>");
+	  alert("GOT DATA!!!");
         }
-        s.onclose = function(e) { 
-          updateHtml("WebSocket Closed<br>"); 
+	s.onopen = function(e) {
+	  s.send("{{ID}}");
+	  alert("sent");
+        }
+	s.onclose = function(e) { 
+	  alert("Connection to Essence was dropped. Please Refresh!");
         }
         window.getCookie = function(name) {
           match = document.cookie.match(new RegExp(name + '=([^;]+)'));
           if (match) return match[1];
           }
       };
+       function send() {
+	alert("called");
+	var msg = document.getElementById("message");
+	var command = "message " + contact + " " + msg.value;
+	alert(command);
+	//s.send(JSON.stringify({"id": "client1"}));
+	s.send(command);
+	alert("sent"); 
+      }
+       function changeContact(ct) {
+	contact = ct;
+	alert(contact);
+      }
     </script>
     <style>
         .send{
@@ -106,12 +120,13 @@
     </style>
   </head>
   <body>
-    <p>Your Public Key: {{ pubkey }} | Connected to Essence: (?)</p>
+    <p>Your Public Key: {{ pubkey }} |</p>
+    <span id="stat">Essence Status: Connecting..</span>
     <hr>
       <div class='userlist'>
           <p>Contacts&nbsp;&nbsp;<b>+</b></p>
           {% for contact in contacts %}
-            <p>{{ contact }}</p>
+            <p onclick="changeContact(this.innerHTML)">{{ contact }}</p>
             <hr
           {% endfor %}
       </div>
@@ -120,10 +135,8 @@
           <div><p class='username'>Jimmy &nbsp;</p><p class='messages'>&nbsp;Hey there fatass&nbsp;</p><br></div>
       </div>
       <div class='chatbar'>
-          <form action='' method='post'>
-              <input type='submit' class='send' name='send' value='Send'>
-              <input type='text' class='msgbox' name='message'>
-          </form>
+              <input type='submit' class='send' name='send' value='Send' onclick="send();">
+              <input type='text' class='msgbox' id='message'>
       </div>
   </body>
 

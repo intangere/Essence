@@ -56,7 +56,7 @@ class Chat(LineReceiver):
         elif packet[0] == "ping":
             self.sendLine(packet[1]) #packet[1] is the hashkey
         else:
-            self.close()
+            self.transport.close()
         #We need to auth the user/perhaps every message
         #Make the client do work or else the message will be rejected ^
         #Queue messages
