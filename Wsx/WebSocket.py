@@ -60,7 +60,9 @@ class WebSocket(object):
 
     def authClient(self, client):
         request = client.recv(1024)
-        if '\r\n\r\n' in request:
+        print 'doing this crap'
+        if '\r\n' in request: 
+            print 'got to this dumb ass shit'
             headers = self.parseHeaders(request)
             if headers.has_key('Sec-WebSocket-Key'):
                 key = headers['Sec-WebSocket-Key']

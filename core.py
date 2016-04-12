@@ -60,9 +60,9 @@ class Core():
 		return p
 
 	def messageReceived(self, data):
-	  if authenticated == True:
+	  if self.authenticated == True:
 		data = data.split('|')
-		msg = base64.b64decode(self.n.decryptParts(params, eval(data[3].replace('\r\n', ''))))
+		msg = base64.b64decode(self.n.decryptParts(self.params, eval(data[3].replace('\r\n', ''))))
 		if 'Ex%s' % data[1] in contacts.values():
 		  for k,v in contacts.iteritems():
 			if v == 'Ex%s' % data[1]:
@@ -88,12 +88,14 @@ class Core():
 		log("LOGIN","Success. You have been authenticated")
 
 	def connectionLoop(self, client, connected):
-		self.loadPrivAndg(self.loadAndShred())
+		if not self.priv:
+			self.loadPrivAndg(self.loadAndShred())
 		self.s.close()
 		self.s = socket.socket()
 		self.s.connect(("127.0.0.1", 4324))
 		self.s.sendall('auth-req %s\r\n' % (self.pub))
 		self.flag = False
+		web_auth = False
 		outputs = []
 		inputs = [0, self.s, client.sock]
 		buffer = ""
@@ -122,12 +124,14 @@ class Core():
 						elif 'auth-success' in data:
 						  self.setAuthTrue()
 						else:
-								print 'Useless data from Essence'
-					if i == client.sock:
-						data = self.webSocket.decodeBytes(client.sock.recv(1024))
-						print data
-						if data:
 							pass
+					if i == client.sock:
+						data = client.sock.recv(1024)
+						if data:
+							data = data.strip()
+							data_decoded = self.webSocket.decodeBytes(data.strip())
+							if data_decoded.startswith('message'):
+								self.sendMessage(data_decoded)
 						else:
 							inputs.remove(client)
 							connected = False
@@ -154,9 +158,7 @@ class Core():
 		reciever, params = eval(reciever), eval(params)
 		reciever_plain = line.split(' ',1 )[1].split(' ', 1)[0].split(' ')[0][2:]
 		msg = line.split(' ',1)[1].split(' ', 1)[1]
-		f = open('pipe', 'w')
-		f.write('message|%s|%s|%s\r\n' % (self.pub, reciever_plain, self.n.encryptParts(params, reciever, self.n.splitNthChar(1, base64.b64encode(msg)))))
-		f.close()
+		self.s.send('message|%s|%s|%s\r\n' % (self.pub, reciever_plain, self.n.encryptParts(params, reciever, self.n.splitNthChar(1, base64.b64encode(msg)))))
 
 	def addContact(self, line):
 		user, pub_key = line.split(' ')[1].strip(), line.split(' ')[2].strip()
@@ -283,7 +285,6 @@ def login():
 		f = open('00z', 'w+')
 		f.write(pwd)
 		f.close()
-		pass
 	except Exception as e:
 		print e
 		return render_template('problem.html', problem = 'Incorrect decryption password entered.')
