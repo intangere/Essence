@@ -1,4 +1,3 @@
-from flask.ext.login import LoginManager, UserMixin, login_required, login_user, current_user, logout_user
 from flask import Flask, redirect, render_template, request, send_file, Markup, g
 import sqlite3 as lite
 import time
@@ -15,13 +14,11 @@ import socket
 import thread
 import time
 import select
-import Queue
-from g import gvars
 #############################################
-#				  Essence				  #
-#				 Web-Client				#
-#										   #
-#				By Photonic				#
+#				  Essence				    #
+#				 Web-Client				    #
+#										    #
+#				By Photonic				    #
 #############################################
 #Perhaps make this self distributional
 #Make it pull NTRU.py from a server 
@@ -29,47 +26,8 @@ from g import gvars
 #Make it pull poly.py from a server
 
 
-#Remove threading
-#Add user variable to hold data
-
-class User(UserMixin):
-
-	def __init__(self, pub, priv, params, g, authenticated):
-		self.pub = pub #self.loadPubKey()
-		self.priv = priv
-		self.params = params
-		self.g = g
-		self.authenticated = authenticated
-		self.n = NTRU()
-
-	def is_active(self):
-		return True
-
-
-	def get_id(self):
-		return self.pub
-
-	def get_pub(self):
-		return self.pub
-
-	def get_priv(self):
-		return self.priv
-
-	def get_g(self):
-		return self.g
-
-	def is_authenticated(self):
-		return self.authenticated
-
-	def is_anonymous(self):
-		"""False, as anonymous users aren't supported."""
-		return False
-
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__,template_folder=tmpl_dir)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
 
 webSocket = WebSocket()
 webSocket.config({'origin_port' : 8888,
@@ -77,37 +35,6 @@ webSocket.config({'origin_port' : 8888,
 				  'websocket_host' : '127.0.0.1',
 				  'websocket_port' : 8976
 				})
-
-
-@login_manager.user_loader
-def load_user(*args):
-	if not essence.priv:
-		if len(args) > 1:
-			print "we are here"
-			pwd = args[1]
-			f = open('keys/priv.key', 'r')
-			priv = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
-			f.close()	
-			f = open('keys/g.txt', 'r')
-			g = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
-			f.close()	
-			params = eval(base64.b64decode(essence.pub).split('|')[1])
-			user = User(essence.pub, priv, params, g, True)
-			login_user(user, remember=True)
-			essence.priv = priv
-			essence.g = g
-			essence.params = params
-			gvars['priv'] = priv #This reads it fine
-			return user
-		else:
-			return None
-	else:
-		print "ESSENCE VARS"
-		print gvars #This reads it fine
-		user = User(essence.pub, essence.priv, essence.params, essence.g, essence.authenticated)
-		login_user(user, remember=True)
-		return user
-
 
 class Core():
 
@@ -147,12 +74,6 @@ class Core():
 		sys.exit(1)
 
 	def authRequest(self, data):
-		print "PRINTING"
-		print self.user.get_priv()
-		print self.user.get_g()
-		print self.user
-		print self.user.get_id()
-		print "ENDED"
 		self.n.f = self.priv
 		self.n.g = self.g
 		self.n.d = self.priv.count(1) - 1
@@ -166,10 +87,8 @@ class Core():
 		self.authenticated = True
 		log("LOGIN","Success. You have been authenticated")
 
-	def connectionLoop(self, client, connected, user):
-		print "GVARS" 
-		print gvars #THIS IS EMPTY
-		self.user = user
+	def connectionLoop(self, client, connected):
+		self.loadPrivAndg(self.loadAndShred())
 		self.s.close()
 		self.s = socket.socket()
 		self.s.connect(("127.0.0.1", 4324))
@@ -198,8 +117,6 @@ class Core():
 						else:
 						  data = buffer
 						buffer = ""
-						print 'printing data'
-						print data
 						if data[0] == 'auth':
 						  self.authRequest(data)
 						elif 'auth-success' in data:
@@ -208,7 +125,7 @@ class Core():
 								print 'Useless data from Essence'
 					if i == client.sock:
 						data = self.webSocket.decodeBytes(client.sock.recv(1024))
-						#print data
+						print data
 						if data:
 							pass
 						else:
@@ -280,10 +197,31 @@ class Core():
 			i += 1
 		return temp_key
 
+	def loadAndShred(self):
+		f = open('00z', 'r')
+		pwd = f.read()
+		f.close()
+		f = open('00z', 'w+')
+		f.write('0'*len(pwd))
+		f.close()
+		return pwd
+
+	def loadPrivAndg(self, pwd):
+		f = open('keys/priv.key', 'r')
+		priv = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
+		f.close()	
+		f = open('keys/g.txt', 'r')
+		g = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
+		f.close()	
+		params = eval(base64.b64decode(self.pub).split('|')[1])
+		self.priv = priv
+		self.g = g
+		self.params = params
+		pwd = '0' * len(pwd)
+
 essence = Core()
 
 @app.route('/me')
-@login_required
 def me():
 	if not essence.priv:
 		return redirect('/')
@@ -338,7 +276,13 @@ def login():
 	pwd = essence.passToAesKey(request.form['password'])
 	try:
 		essence.ran = True
-		load_user(essence.pub, pwd)
+		f = open('keys/priv.key', 'r')
+		priv = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
+		essence.priv = priv
+		f.close()	
+		f = open('00z', 'w+')
+		f.write(pwd)
+		f.close()
 		pass
 	except Exception as e:
 		print e
@@ -393,9 +337,7 @@ def handler(*args, **kwargs): #Handle the client connection, do whatever you wan
 	ID = args[0]
 	client = args[1]
 	connected = True
-	global essence
-	user = User(essence.pub, essence.priv, essence.params, essence.g, essence.authenticated)
-	essence.connectionLoop(client, connected, user)
+	essence.connectionLoop(client, connected)
 
 def loop():
 	webSocket.running = True
