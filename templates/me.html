@@ -1,10 +1,11 @@
 <html>
   <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>
         Essance Chat | Chat
     </title>
     <script>
-      var contact = "None";
+      var contact = "Me";
         var s = new WebSocket("ws://127.0.0.1:{{port}}/");
       window.onload = function() {
         function updateHtml(content) {
@@ -13,14 +14,14 @@
         }
         s.onmessage = function(e) { 
           //updateHtml("Data recv: " + e.data + "<br>");
-	  alert("GOT DATA!!!");
+	       alert("GOT DATA!!!");
         }
-	s.onopen = function(e) {
-	  s.send("{{ID}}");
-	  alert("sent");
+      	s.onopen = function(e) {
+      	  s.send("{{ID}}");
+          document.getElementById('stat').innerHTML = "Essence: is connected";
         }
-	s.onclose = function(e) { 
-	  alert("Connection to Essence was dropped. Please Refresh!");
+      	s.onclose = function(e) { 
+      	  alert("Connection to Essence was dropped. Please Refresh!");
         }
         window.getCookie = function(name) {
           match = document.cookie.match(new RegExp(name + '=([^;]+)'));
@@ -28,17 +29,22 @@
           }
       };
        function send() {
-	alert("called");
-	var msg = document.getElementById("message");
-	var command = "message " + contact + " " + msg.value;
-	alert(command);
-	//s.send(JSON.stringify({"id": "client1"}));
-	s.send(command);
-	alert("sent"); 
+        	var msg = document.getElementById("message");
+        	var command = "message " + contact + " " + msg.value;
+        	//s.send(JSON.stringify({"id": "client1"}));
+        	s.send(command);
       }
        function changeContact(ct) {
-	contact = ct;
-	alert(contact);
+        	contact = ct;
+        	alert(contact);
+      }
+      function dropMenu() {
+        if(document.getElementById('contact_menu').style.display=='block') { 
+            document.getElementById('contact_menu').style.display='none'; 
+        } 
+        else{
+          document.getElementById('contact_menu').style.display='block';
+        }
       }
     </script>
     <style>
@@ -82,11 +88,14 @@
             font-family:monospace;
         }
         .chatmsgs p{
-            display: inline-block;
+            display: inline;
         }
         .chatmsgs{
             position:fixed;
-            left:5%;
+            left:3%;
+            overflow: auto;
+            overflow: hidden;
+            width: 65.1%;
         }
         .userlist{
             top:0;
@@ -99,40 +108,51 @@
             border-bottom: solid 3px #848484;
         }
         .userlist p{
-            margin-left: 40%;
             display:inline;
-            font-size:30px;
+            font-size:15px;
         }
         .messages{
-            display:block;
-            height:40px;
+            display:block-inline;
             border-top-left-radius:3px;
             border-bottom-left-radius:3px;
             border-bottom-right-radius:3px;
             border-top-right-radius:3px;
             background-color:#FAFAFA;
-            width:auto;
-            font-size:30px;
+            width:200px;
+            font-size:15px;
+            word-wrap: break-word;
+            word-break: break-all;
         }
         .username{
-            font-size:30px;
+            font-size:15px;
+        }
+        .textbox{
+          width: 90%;
         }
     </style>
   </head>
   <body>
-    <p>Your Public Key: {{ pubkey }} |</p>
-    <span id="stat">Essence Status: Connecting..</span>
-    <hr>
-      <div class='userlist'>
-          <p>Contacts&nbsp;&nbsp;<b>+</b></p>
+      <div class='userlist' style="text-align: center; padding-top:5px;">
+          <span onclick="dropMenu();">Contacts&nbsp;&nbsp;<b>+</b></span>
+          <div style="display: none;" id="contact_menu">
+              <input type='text' id='contact_name' placeholder="Name" class="textbox"><br>
+              <input type='text' id='contact_pubkey' placeholder="Public key" class="textbox"><br>
+              <input type = 'submit' name="add_contact" value="Send">
+          </div>
+
           {% for contact in contacts %}
+            <hr>
             <p onclick="changeContact(this.innerHTML)">{{ contact }}</p>
-            <hr
           {% endfor %}
       </div>
       <div class='chatmsgs'>
-          <div><p class='username'>Bobby &nbsp;</p><p class='messages'>&nbsp;Hey there Jimmy!&nbsp;</p><br></div>
-          <div><p class='username'>Jimmy &nbsp;</p><p class='messages'>&nbsp;Hey there fatass&nbsp;</p><br></div>
+          <p style="word-wrap: break-word; word-break: break-all; font-size: 10px;">Your Public Key: {{ pubkey }}</p><br>
+          <span id="stat">Essence Status: Connecting..</span>
+          <hr sty;e = "background-color: black; height: 1px; border: 0;">
+          <div><p class='username'>Bobby &nbsp;</p><p class='messages'>&nbsp;Hey there Jimmy!&nbsp;</p><br></div><br>
+          <div><p class='username'>Jimmy &nbsp;</p><p class='messages'>&nbsp;Hey there fatass&nbsp;</p><br></div><br>
+          <div><p class='username'>Jimmy &nbsp;</p><p class='messages'>&nbsp;Suck my giant ass ball sack you god damn homosexual bastard.&nbsp;</p><br></div>
+          
       </div>
       <div class='chatbar'>
               <input type='submit' class='send' name='send' value='Send' onclick="send();">

@@ -25,6 +25,7 @@ class Chat(LineReceiver):
         self.user_auth_key = None
 
     def connectionLost(self, reason):
+        print "Connection deadarino"
         if hasattr(self, 'pub_key'):
             if self.pub_key in self.users:
                 del self.users[self.pub_key]
@@ -33,6 +34,7 @@ class Chat(LineReceiver):
         print "[%s]: %s" % (info, msg)
 
     def lineReceived(self, line):
+        print line
         line = line.replace('\r\n', '')
         if self.state == "Unauthenticated":
             if not "auth-ret" in line:
@@ -56,7 +58,9 @@ class Chat(LineReceiver):
         elif packet[0] == "ping":
             self.sendLine(packet[1]) #packet[1] is the hashkey
         else:
-            self.transport.close()
+            #self.transport.loseConnection()
+            self.sendLine('Yolod\r\n')
+            pass
         #We need to auth the user/perhaps every message
         #Make the client do work or else the message will be rejected ^
         #Queue messages

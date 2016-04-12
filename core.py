@@ -1,4 +1,5 @@
-from flask import Flask, redirect, render_template, request, send_file, Markup
+from flask.ext.login import LoginManager, UserMixin, login_required, login_user, current_user, logout_user
+from flask import Flask, redirect, render_template, request, send_file, Markup, g
 import sqlite3 as lite
 import time
 import os, subprocess
@@ -13,22 +14,62 @@ import os.path
 import socket
 import thread
 import time
+import select
+import Queue
+from g import gvars
 #############################################
-#                  Essence                  #
-#                 Web-Client                #
-#                                           #
-#                By Photonic                #
+#				  Essence				  #
+#				 Web-Client				#
+#										   #
+#				By Photonic				#
 #############################################
 #Perhaps make this self distributional
 #Make it pull NTRU.py from a server 
 #Make it pull aes.py from a server
 #Make it pull poly.py from a server
 
+
+#Remove threading
+#Add user variable to hold data
+
+class User(UserMixin):
+
+	def __init__(self, pub, priv, params, g, authenticated):
+		self.pub = pub #self.loadPubKey()
+		self.priv = priv
+		self.params = params
+		self.g = g
+		self.authenticated = authenticated
+		self.n = NTRU()
+
+	def is_active(self):
+		return True
+
+
+	def get_id(self):
+		return self.pub
+
+	def get_pub(self):
+		return self.pub
+
+	def get_priv(self):
+		return self.priv
+
+	def get_g(self):
+		return self.g
+
+	def is_authenticated(self):
+		return self.authenticated
+
+	def is_anonymous(self):
+		"""False, as anonymous users aren't supported."""
+		return False
+
 tmpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 app = Flask(__name__,template_folder=tmpl_dir)
 
-
-
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 webSocket = WebSocket()
 webSocket.config({'origin_port' : 8888,
@@ -37,152 +78,227 @@ webSocket.config({'origin_port' : 8888,
 				  'websocket_port' : 8976
 				})
 
-memory = {'pub' : '',
-		  'priv' : '',
-		  'params' : '',
-		  'g' : '',
-		  'authenticated' : False,
-		  's' : socket.socket()}
 
-"""
-Global variables
-"""
-try:
-	f = open('keys/pub.key', 'r')
-	memory['pub'] = f.read().strip()
-	f.close()
-except Exception as e:
-	pub = None
+@login_manager.user_loader
+def load_user(*args):
+	if not essence.priv:
+		if len(args) > 1:
+			print "we are here"
+			pwd = args[1]
+			f = open('keys/priv.key', 'r')
+			priv = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
+			f.close()	
+			f = open('keys/g.txt', 'r')
+			g = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
+			f.close()	
+			params = eval(base64.b64decode(essence.pub).split('|')[1])
+			user = User(essence.pub, priv, params, g, True)
+			login_user(user, remember=True)
+			essence.priv = priv
+			essence.g = g
+			essence.params = params
+			gvars['priv'] = priv #This reads it fine
+			return user
+		else:
+			return None
+	else:
+		print "ESSENCE VARS"
+		print gvars #This reads it fine
+		user = User(essence.pub, essence.priv, essence.params, essence.g, essence.authenticated)
+		login_user(user, remember=True)
+		return user
 
-n = NTRU()
-"""
-end
-"""
 
-def messageReceived(data):
-  if authenticated == True:
-    data = data.split('|')
-    msg = base64.b64decode(n.decryptParts(params, eval(data[3].replace('\r\n', ''))))
-    if 'Ex%s' % data[1] in contacts.values():
-      for k,v in contacts.iteritems():
-        if v == 'Ex%s' % data[1]:
-          log('%s' % k, msg)
-    else:
-      log('Ex%s' % data[1], msg)
-  else:
-    log("ERROR", "ACCESS DENIED")
-    sys.exit(1)
+class Core():
 
-def authRequest(data):
-	n.f = memory['priv']
-	n.g = memory['g']
-	n.d = memory['priv'].count(1) - 1
-	msg = n.decryptParts(memory['params'], eval(data[1]))#n.splitNthChar(7, base64.b64decode(msg)))
-	if msg.endswith('.'): 
-		msg = msg[:-1]
-		log("AUTH", "Auth token: %s" % msg)
-		memory['s'].send('auth-ret %s %s\r\n' % (msg.strip(), memory['pub'].strip()))
+	def __init__(self):
+		self.s = socket.socket()
+		self.pub = self.loadPubKey()
+		self.priv = ''
+		self.params = ''
+		self.g = ''
+		self.authenticated = False
+		self.n = NTRU()
+		self.ran = False
+		self.webSocket = WebSocket()
 
-def setAuthTrue():
-    memory['authenticated'] = True
-    log("LOGIN","Success. You have been authenticated")
+	def loadPubKey(self):
+		try:
+			f = open('keys/pub.key', 'r')
+			p = f.read().strip()
+			f.close()
+		except Exception as e:
+			print e
+			p = None
+		return p
 
-def connectionLoop():
-    memory['s'].close()
-    memory['s'] = socket.socket()
-    memory['s'].connect(("127.0.0.1", 4324))
-    memory['s'].send('auth-req %s\r\n' % (memory['pub']))
-    buffer = ""
-    while True:
-      print buffer
-      if '\r\n' not in buffer:
-        buffer = buffer + memory['s'].recv(1)
-      else:
-        if buffer.startswith('message|'):
-          messageReceived(buffer)
-        elif ' ' in buffer:
-          data = buffer.strip().replace('\r\n', '').split(' ', 1)
-        else:
-          data = buffer
-        buffer = ""
-        if data[0] == 'auth':
-          authRequest(data)
-        elif 'auth-success' in data:
-          setAuthTrue()
-	  memory['s'].send("BALLS\r\n")
-def exit():
-    s.close()
-    log("INFO", "All connections killed.")
-    log("INFO", "Essence has shut down.")
-    sys.exit(1)   
-
-def sendMessage(line):
-    print memory['s']  
-    print line
-    memory['s'].send('balls\r\n')
-    if contacts.has_key(line.split(' ', 1)[1].split(' ', 1)[0]):
-      line = 'message %s %s'.strip() % (contacts[line.split(' ', 1)[1].split(' ', 1)[0]], line.split(' ', 1)[1].split(' ', 1)[1])
-    print line
-    reciever, params = base64.b64decode(line.split(' ', 1)[1].split(' ', 1)[0][2:]).split('|')
-    reciever, params = eval(reciever), eval(params)
-    reciever_plain = line.split(' ',1 )[1].split(' ', 1)[0].split(' ')[0][2:]
-    msg = line.split(' ',1)[1].split(' ', 1)[1]
-    memory['s'].send('message|%s|%s|%s\r\n' % (memory['pub'], reciever_plain, n.encryptParts(params, reciever, n.splitNthChar(1, base64.b64encode(msg)))))
-
-def addContact(line):
-    user, pub_key = line.split(' ')[1].strip(), line.split(' ')[2].strip()
-    if not contacts.has_key(user) and pub_key not in contacts.values():
-      contacts[user] = pub_key
-      log('ADDED', '%s has been added with public key %s' % (user, pub_key))
-      f = open('contacts.py', 'w+')
-      f.write('contacts = %s' % str(contacts))
-      f.close()
-    else:
-      log('ADDED', 'Something went wrong. Try again.. (The user may already be in your contacts)')
-
-def delContact(line):
-    user = line.split(' ')[1].strip()
-    if contacts.has_key(user):
-      del contacts[user]
-      f = open('contacts.py', 'w+')
-      f.write('contacts = %s' % str(contacts))
-      f.close()
-      log('DELETED', '%s has been removed from your contacts' % (user))
-    else:
-      log('ERROR', '%s is not in your contacts' % user)
-
-def getContacts():
-    for contact, key in contacts.iteritems():
-      log("CONTACT", 'Username: %s -> Public Key: %s' % (contact, key))  
-    return contacts 
-
-def passToAesKey(password):
-	key = password
-	i = 0
-	temp_key = ""
-	while len(temp_key) < 32:
-	  temp_key = "%s%s" % (temp_key, key[i])
-	  if i == len(key) - 1:
-	    i = 0
+	def messageReceived(self, data):
+	  if authenticated == True:
+		data = data.split('|')
+		msg = base64.b64decode(self.n.decryptParts(params, eval(data[3].replace('\r\n', ''))))
+		if 'Ex%s' % data[1] in contacts.values():
+		  for k,v in contacts.iteritems():
+			if v == 'Ex%s' % data[1]:
+			  log('%s' % k, msg)
+		else:
+		  log('Ex%s' % data[1], msg)
 	  else:
-	    i += 1
-	return temp_key
+		log("ERROR", "ACCESS DENIED")
+		sys.exit(1)
+
+	def authRequest(self, data):
+		print "PRINTING"
+		print self.user.get_priv()
+		print self.user.get_g()
+		print self.user
+		print self.user.get_id()
+		print "ENDED"
+		self.n.f = self.priv
+		self.n.g = self.g
+		self.n.d = self.priv.count(1) - 1
+		msg = self.n.decryptParts(self.params, eval(data[1]))#n.splitNthChar(7, base64.b64decode(msg)))
+		if msg.endswith('.'): 
+			msg = msg[:-1]
+			log("AUTH", "Auth token: %s" % msg)
+			self.s.send('auth-ret %s %s\r\n' % (msg.strip(), self.pub.strip()))
+
+	def setAuthTrue(self):
+		self.authenticated = True
+		log("LOGIN","Success. You have been authenticated")
+
+	def connectionLoop(self, client, connected, user):
+		print "GVARS" 
+		print gvars #THIS IS EMPTY
+		self.user = user
+		self.s.close()
+		self.s = socket.socket()
+		self.s.connect(("127.0.0.1", 4324))
+		self.s.sendall('auth-req %s\r\n' % (self.pub))
+		self.flag = False
+		outputs = []
+		inputs = [0, self.s, client.sock]
+		buffer = ""
+		while not self.flag:
+			try:
+				inputready, outputready, exceptrdy = select.select(inputs, outputs,[], 2)
+				for i in inputready:
+					if i == self.s:
+					  if '\r\n' not in buffer:
+						char = self.s.recv(1)
+						if not char:
+							self.flag = True
+							break
+						else:
+							 buffer = ''.join([buffer, char])
+					  else:
+						if buffer.startswith('message|'):
+						  self.messageReceived(buffer)
+						elif ' ' in buffer:
+						  data = buffer.strip().replace('\r\n', '').split(' ', 1)
+						else:
+						  data = buffer
+						buffer = ""
+						print 'printing data'
+						print data
+						if data[0] == 'auth':
+						  self.authRequest(data)
+						elif 'auth-success' in data:
+						  self.setAuthTrue()
+						else:
+								print 'Useless data from Essence'
+					if i == client.sock:
+						data = self.webSocket.decodeBytes(client.sock.recv(1024))
+						#print data
+						if data:
+							pass
+						else:
+							inputs.remove(client)
+							connected = False
+							client.close()
+							del webSocket.clients[ID]
+							webSocket.log("INFO", "Connection with %s ended" % ID)
+			except KeyboardInterrupt:
+				print 'Interrupted.'
+				self.s.close()
+				break
+		self.s.close()
+		log("DEAD", "Connection to Essence has died.")
+
+	def exit(self):
+		self.s.close()
+		log("INFO", "All connections killed.")
+		log("INFO", "Essence has shut down.")
+		sys.exit(1)   
+
+	def sendMessage(self, line):
+		if contacts.has_key(line.split(' ', 1)[1].split(' ', 1)[0]):
+		  line = 'message %s %s'.strip() % (contacts[line.split(' ', 1)[1].split(' ', 1)[0]], line.split(' ', 1)[1].split(' ', 1)[1])
+		reciever, params = base64.b64decode(line.split(' ', 1)[1].split(' ', 1)[0][2:]).split('|')
+		reciever, params = eval(reciever), eval(params)
+		reciever_plain = line.split(' ',1 )[1].split(' ', 1)[0].split(' ')[0][2:]
+		msg = line.split(' ',1)[1].split(' ', 1)[1]
+		f = open('pipe', 'w')
+		f.write('message|%s|%s|%s\r\n' % (self.pub, reciever_plain, self.n.encryptParts(params, reciever, self.n.splitNthChar(1, base64.b64encode(msg)))))
+		f.close()
+
+	def addContact(self, line):
+		user, pub_key = line.split(' ')[1].strip(), line.split(' ')[2].strip()
+		if not contacts.has_key(user) and pub_key not in contacts.values():
+		  contacts[user] = pub_key
+		  log('ADDED', '%s has been added with public key %s' % (user, pub_key))
+		  f = open('contacts.py', 'w+')
+		  f.write('contacts = %s' % str(contacts))
+		  f.close()
+		else:
+		  log('ADDED', 'Something went wrong. Try again.. (The user may already be in your contacts)')
+
+	def delContact(self, line):
+		user = line.split(' ')[1].strip()
+		if contacts.has_key(user):
+		  del contacts[user]
+		  f = open('contacts.py', 'w+')
+		  f.write('contacts = %s' % str(contacts))
+		  f.close()
+		  log('DELETED', '%s has been removed from your contacts' % (user))
+		else:
+		  log('ERROR', '%s is not in your contacts' % user)
+
+	def getContacts(self):
+		for contact, key in contacts.iteritems():
+		  log("CONTACT", 'Username: %s -> Public Key: %s' % (contact, key))  
+		return contacts 
+
+	def passToAesKey(self, password):
+		key = password
+		i = 0
+		temp_key = ""
+		while len(temp_key) < 32:
+		  temp_key = "%s%s" % (temp_key, key[i])
+		  if i == len(key) - 1:
+			i = 0
+		  else:
+			i += 1
+		return temp_key
+
+essence = Core()
 
 @app.route('/me')
+@login_required
 def me():
-	if not memory['priv']:
+	if not essence.priv:
 		return redirect('/')
 	ID = ''.join(random.SystemRandom().choice(
 					   string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(20))
-	if memory['authenticated'] == False:
-		thread.start_new_thread(connectionLoop, ())
+	if essence.authenticated == False:
+		pass
+		#\p = Process(target=essence.connectionLoop, args=()).start()
 	webSocket.createID(ID)
-	return render_template('me.html', ID=ID, port=webSocket.websocket_port, pubkey = memory['pub'], contacts = contacts)
+	return render_template('me.html', ID=ID, port=webSocket.websocket_port, pubkey = essence.pub, contacts = contacts)
 
 @app.route('/')
 def index():
 	if os.path.exists('keys/pub.key') and os.path.exists('keys/priv.key'):
-		return render_template('login.html', pubkey = memory['pub'])
+		return render_template('login.html', pubkey = essence.pub)
 	else:
 		return render_template('create.html')
 
@@ -195,41 +311,38 @@ def create_acc():
 		else:
 			problem = "Password is shorter than 7 characters"
 		  	return render_template('problem.html', problem = problem)
-		pwd = passToAesKey(pwd)
-		memory['pub'], memory['priv'], memory['params'], memory['g'] = n.generateNTRUKeysAlpha()
-		log('Public Key', memory['pub'])
-		memory['pub'] = base64.b64encode('%s|%s' % (str(memory['pub']), str(memory['params']))).replace(' ', '')
-		log("INFO", "Your generated public key is Ex%s" % memory['pub'])
+		pwd = essence.passToAesKey(pwd)
+		essence.pub, essence.priv, essence.params, essence.g = essence.n.generateNTRUKeysAlpha()
+		log('Public Key', essence.pub)
+		essence.pub = base64.b64encode('%s|%s' % (essence.pub, str(essence.params).replace(' ', '')))
+		log("INFO", "Your generated public key is Ex%s" % essence.pub)
 		f = open('keys/pub.key' , 'w+')
-		f.write(memory['pub'])
+		f.write(essence.pub)
 		f.close()
-		log('Params', str(memory['params']))
+		log('Params', str(essence.params))
 		f = open('keys/priv.key' , 'w+')
-		f.write(base64.b64encode(aes.encryptData(pwd, str(memory['priv']))))
+		f.write(base64.b64encode(aes.encryptData(pwd, str(essence.priv))))
 		f.close()
 		f = open('keys/g.txt' , 'w+')
-		f.write(base64.b64encode(aes.encryptData(pwd, str(memory['g']))))
+		f.write(base64.b64encode(aes.encryptData(pwd, str(essence.g))))
 		f.close()
 		f = open('contacts.py' , 'w+')
-		f.write('contacts = {\'Me\' : \'Ex%s\'}' % memory['pub'])
+		f.write('contacts = {\'Me\' : \'Ex%s\'}' % essence.pub)
 		f.close()
-		contacts = {'Me' : memory['pub']}
+		contacts = {'Me' : essence.pub}
 		log('INFO', 'Your Essence account is ready for use.')
-		return render_template('login.html', pubkey=memory['pub'])
+		return render_template('login.html', pubkey=essence.pub)
 
 @app.route('/login', methods=['post'])
 def login():
-	pwd = passToAesKey(request.form['password'])
+	pwd = essence.passToAesKey(request.form['password'])
 	try:
-		f = open('keys/priv.key', 'r')
-		memory['priv'] = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
-		f.close()    
-		f = open('keys/g.txt', 'r')
-		memory['g'] = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
-	 	f.close()    
+		essence.ran = True
+		load_user(essence.pub, pwd)
+		pass
 	except Exception as e:
+		print e
 		return render_template('problem.html', problem = 'Incorrect decryption password entered.')
-	memory['params'] = eval(base64.b64decode(memory['pub']).split('|')[1])
 	return redirect('/me')# pubkey = pub)
 
 @app.route('/register')
@@ -244,7 +357,6 @@ def get_styles_css():
 def get_favicon():
 	return "x"
 	#return send_file("images/favicon.ico", mimetype='image/ico')
-
 
 @app.route('/notes', methods=['get'])
 def note():
@@ -261,19 +373,19 @@ def problem():
 
 @app.route("/shutdown", methods=["GET"])
 def logout():
-    """Logout the current user."""
-    user = current_user
-    user.authenticated = False
-    logout_user()
-    return render_template("/login.html")
+	"""Logout the current user."""
+	user = current_user
+	user.authenticated = False
+	logout_user()
+	return render_template("/login.html")
 
 @app.route("/shred", methods=["GET"])
 def shred():
-    """Logout the current user."""
-    user = current_user
-    user.authenticated = False
-    logout_user()
-    return render_template("/login.html")
+	"""Logout the current user."""
+	user = current_user
+	user.authenticated = False
+	logout_user()
+	return render_template("/login.html")
 
 
 @webSocket.onConnect #Handle the webSocket Connection, return Client() obj if auth successful
@@ -281,18 +393,9 @@ def handler(*args, **kwargs): #Handle the client connection, do whatever you wan
 	ID = args[0]
 	client = args[1]
 	connected = True
-	memory['s'].sendall("BIG BALLS\0")
-	while connected:
-		data = webSocket.decodeBytes(client.sock.recv(1024))
-		if data:
-			sendMessage(data)
-			print data
-		else:
-			connected = False
-
-	del webSocket.clients[ID]
-	webSocket.log("INFO", "Connection with %s ended" % ID)
-
+	global essence
+	user = User(essence.pub, essence.priv, essence.params, essence.g, essence.authenticated)
+	essence.connectionLoop(client, connected, user)
 
 def loop():
 	webSocket.running = True
@@ -302,4 +405,8 @@ def loop():
 
 
 p = Process(target=loop, args=()).start()
+
+
+app.debug = True
+app.config["DEBUG"] = True
 app.config["SECRET_KEY"] = "jw09mrhcw0e8agv0a8fmsgd08vfag0sfmd0"
