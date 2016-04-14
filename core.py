@@ -14,6 +14,8 @@ import socket
 import thread
 import time
 import select
+import random
+import string
 #############################################
 #				  Essence				    #
 #				 Web-Client				    #
@@ -54,10 +56,10 @@ class Core():
 			f = open('keys/pub.key', 'r')
 			p = f.read().strip()
 			f.close()
+			return p
 		except Exception as e:
-			print e
 			p = None
-		return p
+			return p
 
 	def messageReceived(self, data):
 	  if self.authenticated == True:
@@ -66,9 +68,11 @@ class Core():
 		if 'Ex%s' % data[1] in contacts.values():
 		  for k,v in contacts.iteritems():
 			if v == 'Ex%s' % data[1]:
-			  log('%s' % k, msg)
+			  #log('%s' % k, msg)
+			  return '%s:%s' %(k, msg)
 		else:
-		  log('Ex%s' % data[1], msg)
+		  #log('Ex%s' % data[1], msg)
+		  return '%s:%s' % (data[1], msg)
 	  else:
 		log("ERROR", "ACCESS DENIED")
 		sys.exit(1)
@@ -87,7 +91,7 @@ class Core():
 		self.authenticated = True
 		log("LOGIN","Success. You have been authenticated")
 
-	def connectionLoop(self, client, connected):
+	def connectionLoop(self, client, connected, priv):
 		if not self.priv:
 			self.loadPrivAndg(self.loadAndShred())
 		self.s.close()
@@ -113,7 +117,8 @@ class Core():
 							 buffer = ''.join([buffer, char])
 					  else:
 						if buffer.startswith('message|'):
-						  self.messageReceived(buffer)
+						  msg = self.messageReceived(buffer)
+						  webSocket.sendUpdate(client, msg, 'NORMAL')
 						elif ' ' in buffer:
 						  data = buffer.strip().replace('\r\n', '').split(' ', 1)
 						else:
@@ -132,10 +137,14 @@ class Core():
 							data_decoded = self.webSocket.decodeBytes(data.strip())
 							if data_decoded.startswith('message'):
 								self.sendMessage(data_decoded)
+							elif data_decoded.startswith('shred'):
+								self.flag = True
+								client.sock.close()
+								self.shred()
 						else:
-							inputs.remove(client)
+							inputs.remove(client.sock)
 							connected = False
-							client.close()
+							client.sock.close()
 							del webSocket.clients[ID]
 							webSocket.log("INFO", "Connection with %s ended" % ID)
 			except KeyboardInterrupt:
@@ -144,6 +153,20 @@ class Core():
 				break
 		self.s.close()
 		log("DEAD", "Connection to Essence has died.")
+		self.exit()
+
+	def shred(self):
+		files = ['keys/priv.key', 'keys/pub.key', 'keys/g.txt', 'contacts.py']
+		for file in files:
+			f = open('%s' % file, 'r')
+			p = len(f.read())
+			f.close()
+			for i in range(0, 4):
+				f = open('%s' % file, 'w+')
+				f.write(''.join(string.lowercase for x in range(p)))
+				f.close()
+			os.remove(file)
+
 
 	def exit(self):
 		self.s.close()
@@ -215,6 +238,8 @@ class Core():
 		f = open('keys/g.txt', 'r')
 		g = eval(aes.decryptData(pwd, base64.b64decode(f.read().strip())))
 		f.close()	
+		if self.pub == None:
+			self.pub = self.loadPubKey()			
 		params = eval(base64.b64decode(self.pub).split('|')[1])
 		self.priv = priv
 		self.g = g
@@ -225,7 +250,10 @@ essence = Core()
 
 @app.route('/me')
 def me():
-	if not essence.priv:
+	f = open('00z', 'r')
+	t = f.read()
+	f.close()
+	if '0' * len(t) == t.strip():
 		return redirect('/')
 	ID = ''.join(random.SystemRandom().choice(
 					   string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(20))
@@ -338,7 +366,7 @@ def handler(*args, **kwargs): #Handle the client connection, do whatever you wan
 	ID = args[0]
 	client = args[1]
 	connected = True
-	essence.connectionLoop(client, connected)
+	essence.connectionLoop(client, connected, essence.priv)
 
 def loop():
 	webSocket.running = True

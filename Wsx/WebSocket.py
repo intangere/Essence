@@ -78,10 +78,11 @@ class WebSocket(object):
         for client in self.clients:
             client.send(self.buildFrame(data, opcode_type))
 
-    def sendUpdate(self, data, opcode_type):
-        if self.sock:
-            self.sock.send(self.buildFrame(data, opcode_type))
+    def sendUpdate(self, client, data, opcode_type):
+        if client:
+            client.sock.send(self.buildFrame(data, opcode_type))
         else:
+            print 'nope'
             del self.clients[client]
 
     def createID(self, ID):

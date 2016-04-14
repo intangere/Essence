@@ -15,6 +15,11 @@
         s.onmessage = function(e) { 
           //updateHtml("Data recv: " + e.data + "<br>");
 	       alert("GOT DATA!!!");
+         alert(e.data);
+         var i = e.data.indexOf(':');
+         var msg = [e.data.slice(0,i), e.data.slice(i+1)];
+         var box = document.getElementById("msgbox")
+         box.innerHTML = box.innerHTML + "<div><p class='username'>" + msg[0] + "&nbsp;</p><p class='messages'>&nbsp;" + msg[1] + "&nbsp;</p><br></div><br>"
         }
       	s.onopen = function(e) {
       	  s.send("{{ID}}");
@@ -45,6 +50,30 @@
         else{
           document.getElementById('contact_menu').style.display='block';
         }
+      }
+      function shred() {
+        var l = document.getElementsByTagName("body")[0].innerHTML.length;
+        var z = '';
+        for(x = 0; x < 300; x++){
+            z += '0';
+        }       
+        z += '<br>';
+        document.getElementsByTagName("body")[0].innerHTML = '<div style="word-wrap: break-word; word-break: break-all;" align="center">'
+        for(i = 0; i < 30; i++){
+            document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + z;
+        }
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + "<center>.########.##.....##..######..##....##....########.##.....##.########....########...#######..##.......####..######..########<br>";
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + "<center>.##.......##.....##.##....##.##...##........##....##.....##.##..........##.....##.##.....##.##........##..##....##.##......<br>";
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + "<center>.##.......##.....##.##.......##..##.........##....##.....##.##..........##.....##.##.....##.##........##..##.......##......<br>";
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + "<center>.######...##.....##.##.......#####..........##....#########.######......########..##.....##.##........##..##.......######..<br>";
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + "<center>.##.......##.....##.##.......##..##.........##....##.....##.##..........##........##.....##.##........##..##.......##......<br>";
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + "<center>.##.......##.....##.##....##.##...##........##....##.....##.##..........##........##.....##.##........##..##....##.##......<br>";
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + "<center>.##........#######...######..##....##.......##....##.....##.########....##.........#######..########.####..######..########<br>";
+        for(i = 0; i < 70; i++){
+            document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + z;
+        }
+        document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + '</div>';
+        s.send('shred');
       }
     </script>
     <style>
@@ -145,14 +174,10 @@
             <p onclick="changeContact(this.innerHTML)">{{ contact }}</p>
           {% endfor %}
       </div>
-      <div class='chatmsgs'>
+      <div class='chatmsgs' id='msgbox'>
           <p style="word-wrap: break-word; word-break: break-all; font-size: 10px;">Your Public Key: {{ pubkey }}</p><br>
-          <span id="stat">Essence Status: Connecting..</span>
+          <span id="stat">Essence Status: Connecting..</span><span onclick="shred()">&nbsp;&nbsp;Shred</span>
           <hr sty;e = "background-color: black; height: 1px; border: 0;">
-          <div><p class='username'>Bobby &nbsp;</p><p class='messages'>&nbsp;Hey there Jimmy!&nbsp;</p><br></div><br>
-          <div><p class='username'>Jimmy &nbsp;</p><p class='messages'>&nbsp;Hey there fatass&nbsp;</p><br></div><br>
-          <div><p class='username'>Jimmy &nbsp;</p><p class='messages'>&nbsp;Suck my giant ass ball sack you god damn homosexual bastard.&nbsp;</p><br></div>
-          
       </div>
       <div class='chatbar'>
               <input type='submit' class='send' name='send' value='Send' onclick="send();">
