@@ -47,14 +47,17 @@ class Chat(LineReceiver):
     def packetHandler(self, message):
         packet = message.split('|')
         self.log("MESSAGE", str(packet))
+        print packet[1]
+        print self.pub_key
         if packet[0] == "message":
-            if ',' in packet[2]:
-                for user in packet[2].split(','):
-                    if user.startswith('Ex'):
-                        user = user[2:]
-                    self.users[user].sendLine(message +'\r\n')
-            else:
-                self.users[packet[2]].sendLine(message +'\r\n')
+            if packet[1] == self.pub_key:
+                if ',' in packet[2]:
+                    for user in packet[2].split(','):
+                        if user.startswith('Ex'):
+                            user = user[2:]
+                        self.users[user].sendLine(message +'\r\n')
+                else:
+                    self.users[packet[2]].sendLine(message +'\r\n')
         elif packet[0] == "ping":
             self.sendLine(packet[1]) #packet[1] is the hashkey
         else:
