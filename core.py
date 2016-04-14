@@ -172,7 +172,7 @@ class Core():
 		self.s.close()
 		log("INFO", "All connections killed.")
 		log("INFO", "Essence has shut down.")
-		sys.exit(1)   
+		sys.exit(1)
 
 	def sendMessage(self, line):
 		if contacts.has_key(line.split(' ', 1)[1].split(' ', 1)[0]):
@@ -303,7 +303,7 @@ def create_acc():
 
 @app.route('/login', methods=['post'])
 def login():
-	pwd = essence.passToAesKey(request.form['password'].replace(u'\xbe', '').replace(u'\x7f', ')'))
+	pwd = essence.passToAesKey(request.form['password'].strip().replace(u'\xbe', '').replace(u'\x7f', ')'))
 	try:
 		essence.ran = True
 		f = open('keys/priv.key', 'r')
