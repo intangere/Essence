@@ -141,6 +141,8 @@ class Core():
 								self.flag = True
 								client.sock.close()
 								self.shred()
+							elif data_decoded.startswith('addcontact'):
+								self.addContact(data_decoded)
 						else:
 							inputs.remove(client.sock)
 							connected = False
@@ -248,11 +250,19 @@ class Core():
 
 essence = Core()
 
+def reloadContacts():
+	f = open('contacts.py', 'r')
+	c = f.read()
+	f.close()
+	global contacts
+	contacts = eval(c.split(' = ')[1])
+
 @app.route('/me')
 def me():
 	f = open('00z', 'r')
 	t = f.read()
 	f.close()
+	reloadContacts()
 	if '0' * len(t) == t.strip():
 		return redirect('/')
 	ID = ''.join(random.SystemRandom().choice(
@@ -265,6 +275,7 @@ def me():
 
 @app.route('/')
 def index():
+	reloadContacts()
 	if os.path.exists('keys/pub.key') and os.path.exists('keys/priv.key'):
 		return render_template('login.html', pubkey = essence.pub)
 	else:

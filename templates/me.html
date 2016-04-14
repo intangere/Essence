@@ -34,6 +34,17 @@
         	var msg = document.getElementById("message");
         	var command = "message " + contact + " " + msg.value;
         	s.send(command);
+          document.getElementById('message').value = "";
+      }
+       function addcontact() {
+          var contact_name = document.getElementById("contact_name");
+          var contact_pubkey = document.getElementById("contact_pubkey");
+          var command = "addcontact " + contact_name.value + " " + contact_pubkey.value;
+          s.send(command);
+          document.getElementById('contact_list').innerHTML = document.getElementById('contact_list').innerHTML + '<hr><p onclick="changeContact(this.innerHTML)">' + contact_name.value + '</p>';
+          document.getElementById('contact_name').value = "";
+          document.getElementById('contact_pubkey').value = "";
+          dropMenu();
       }
        function changeContact(ct) {
         	contact = ct;
@@ -162,13 +173,14 @@
           <div style="display: none;" id="contact_menu">
               <input type='text' id='contact_name' placeholder="Name" class="textbox"><br>
               <input type='text' id='contact_pubkey' placeholder="Public key" class="textbox"><br>
-              <input type = 'submit' name="add_contact" value="Send">
+              <input type = 'submit' name="add_contact" value="Send" onclick='addcontact();'>
           </div>
-
+          <div id="contact_list">
           {% for contact in contacts %}
             <hr>
             <p onclick="changeContact(this.innerHTML)">{{ contact }}</p>
           {% endfor %}
+          </div>
       </div>
       <div class='chatmsgs' id='msgbox'>
           <p style="word-wrap: break-word; word-break: break-all; font-size: 10px;">Your Public Key: {{ pubkey }}</p><br>
