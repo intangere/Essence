@@ -91,7 +91,7 @@ class Core():
 		self.authenticated = True
 		log("LOGIN","Success. You have been authenticated")
 
-	def connectionLoop(self, client, connected, priv):
+	def connectionLoop(self, client, connected, priv, ID):
 		if not self.priv:
 			self.loadPrivAndg(self.loadAndShred())
 		self.s.close()
@@ -366,7 +366,7 @@ def handler(*args, **kwargs): #Handle the client connection, do whatever you wan
 	ID = args[0]
 	client = args[1]
 	connected = True
-	essence.connectionLoop(client, connected, essence.priv)
+	essence.connectionLoop(client, connected, essence.priv, ID)
 
 def loop():
 	webSocket.running = True

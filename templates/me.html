@@ -33,7 +33,6 @@
        function send() {
         	var msg = document.getElementById("message");
         	var command = "message " + contact + " " + msg.value;
-        	//s.send(JSON.stringify({"id": "client1"}));
         	s.send(command);
       }
        function changeContact(ct) {
