@@ -13,9 +13,6 @@
           text.innerHTML = text.innerHTML + content + "<br>";
         }
         s.onmessage = function(e) { 
-          //updateHtml("Data recv: " + e.data + "<br>");
-	       alert("GOT DATA!!!");
-         alert(e.data);
          var i = e.data.indexOf(':');
          var msg = [e.data.slice(0,i), e.data.slice(i+1)];
          var box = document.getElementById("msgbox")
