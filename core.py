@@ -303,7 +303,7 @@ def create_acc():
 
 @app.route('/login', methods=['post'])
 def login():
-	pwd = essence.passToAesKey(request.form['password'])
+	pwd = essence.passToAesKey(request.form['password'].replace('\xbe', '').replace('x7f', ')'))
 	try:
 		essence.ran = True
 		f = open('keys/priv.key', 'r')
