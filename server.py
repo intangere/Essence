@@ -25,7 +25,7 @@ class Chat(LineReceiver):
         self.user_auth_key = None
 
     def connectionLost(self, reason):
-        print "Connection deadarino"
+	self.log('INFO', 'Client has disconnected')
         if hasattr(self, 'pub_key'):
             if self.pub_key in self.users:
                 del self.users[self.pub_key]

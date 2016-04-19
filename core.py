@@ -5,7 +5,6 @@ import os, subprocess
 import random, string, aes, base64, sys
 from NTRU.main import *
 from logger import log
-from contacts import contacts
 from Wsx.WebSocket import WebSocket, Client
 from multiprocessing import Process
 import sys
@@ -84,14 +83,15 @@ class Core():
 		msg = self.n.decryptParts(self.params, eval(data[1]))#n.splitNthChar(7, base64.b64decode(msg)))
 		if msg.endswith('.'): 
 			msg = msg[:-1]
-			log("AUTH", "Auth token: %s" % msg)
-			self.s.send('auth-ret %s %s\r\n' % (msg.strip(), self.pub.strip()))
+		log("AUTH", "Auth token: %s" % msg)
+		self.s.send('auth-ret %s %s\r\n' % (msg.strip(), self.pub.strip()))
 
 	def setAuthTrue(self):
 		self.authenticated = True
 		log("LOGIN","Success. You have been authenticated")
 
 	def connectionLoop(self, client, connected, priv, ID):
+		self.contacts = self.loadContacts()
 		if not self.priv:
 			self.loadPrivAndg(self.loadAndShred())
 		self.s.close()
@@ -143,6 +143,8 @@ class Core():
 								self.shred()
 							elif data_decoded.startswith('addcontact'):
 								self.addContact(data_decoded)
+							elif data_decoded.startswith('delcontact'):
+								self.delContact(data_decoded)
 						else:
 							inputs.remove(client.sock)
 							connected = False
@@ -170,6 +172,21 @@ class Core():
 			os.remove(file)
 
 
+	def isContact(self, name):
+		f = open('contacts.py')
+		contacts = f.read()
+		eval(contacts)
+		print contacts
+		if name in contacts.keys():
+			return True
+		else:
+			return False
+
+	def loadContacts(self):
+		f = open('contacts.py')
+		contacts = f.read()
+		return eval(contacts.split(' = ')[1])
+
 	def exit(self):
 		self.s.close()
 		log("INFO", "All connections killed.")
@@ -187,28 +204,28 @@ class Core():
 
 	def addContact(self, line):
 		user, pub_key = line.split(' ')[1].strip(), line.split(' ')[2].strip()
-		if not contacts.has_key(user) and pub_key not in contacts.values():
-		  contacts[user] = pub_key
+		if not self.contacts.has_key(user) and pub_key not in self.contacts.values():
+		  self.contacts[user] = pub_key
 		  log('ADDED', '%s has been added with public key %s' % (user, pub_key))
 		  f = open('contacts.py', 'w+')
-		  f.write('contacts = %s' % str(contacts))
+		  f.write('contacts = %s' % str(self.contacts))
 		  f.close()
 		else:
 		  log('ADDED', 'Something went wrong. Try again.. (The user may already be in your contacts)')
 
 	def delContact(self, line):
 		user = line.split(' ')[1].strip()
-		if contacts.has_key(user):
-		  del contacts[user]
+		if self.contacts.has_key(user):
+		  del self.contacts[user]
 		  f = open('contacts.py', 'w+')
-		  f.write('contacts = %s' % str(contacts))
+		  f.write('contacts = %s' % str(self.contacts))
 		  f.close()
 		  log('DELETED', '%s has been removed from your contacts' % (user))
 		else:
 		  log('ERROR', '%s is not in your contacts' % user)
 
 	def getContacts(self):
-		for contact, key in contacts.iteritems():
+		for contact, key in self.contacts.iteritems():
 		  log("CONTACT", 'Username: %s -> Public Key: %s' % (contact, key))  
 		return contacts 
 
@@ -250,19 +267,11 @@ class Core():
 
 essence = Core()
 
-def reloadContacts():
-	f = open('contacts.py', 'r')
-	c = f.read()
-	f.close()
-	global contacts
-	contacts = eval(c.split(' = ')[1])
-
 @app.route('/me')
 def me():
 	f = open('00z', 'r')
 	t = f.read()
 	f.close()
-	reloadContacts()
 	if '0' * len(t) == t.strip():
 		return redirect('/')
 	ID = ''.join(random.SystemRandom().choice(
@@ -271,11 +280,11 @@ def me():
 		pass
 		#\p = Process(target=essence.connectionLoop, args=()).start()
 	webSocket.createID(ID)
+	contacts = essence.loadContacts()
 	return render_template('me.html', ID=ID, port=webSocket.websocket_port, pubkey = essence.pub, contacts = contacts)
 
 @app.route('/')
 def index():
-	reloadContacts()
 	if os.path.exists('keys/pub.key') and os.path.exists('keys/priv.key'):
 		return render_template('login.html', pubkey = essence.pub)
 	else:

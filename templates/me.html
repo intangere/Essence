@@ -15,7 +15,7 @@
         s.onmessage = function(e) { 
          var i = e.data.indexOf(':');
          var msg = [e.data.slice(0,i), e.data.slice(i+1)];
-         var box = document.getElementById("msgbox")
+         var box = document.getElementById("msgs")
          box.innerHTML = box.innerHTML + "<div><p class='username'>" + msg[0] + "&nbsp;</p><p class='messages'>&nbsp;" + msg[1] + "&nbsp;</p><br></div><br>"
         }
       	s.onopen = function(e) {
@@ -30,10 +30,22 @@
           if (match) return match[1];
           }
       };
+      function clearmsgs() {
+        var box = document.getElementById('msgs');
+        var z = '';
+        for(x = 0; x < 300; x++){
+            z += '0';
+        }       
+        z += '<br>';
+        box.innerHTML = z;
+        box.innerHTML= '';
+      }
        function send() {
         	var msg = document.getElementById("message");
         	var command = "message " + contact + " " + msg.value;
         	s.send(command);
+          var box = document.getElementById("msgs");
+          box.innerHTML = box.innerHTML + "<div><p class='username'>" + contact + "&nbsp;</p><p class='messages'>&nbsp;" + document.getElementById('message').value + "&nbsp;</p><br></div><br>";
           document.getElementById('message').value = "";
       }
        function addcontact() {
@@ -41,14 +53,25 @@
           var contact_pubkey = document.getElementById("contact_pubkey");
           var command = "addcontact " + contact_name.value + " " + contact_pubkey.value;
           s.send(command);
-          document.getElementById('contact_list').innerHTML = document.getElementById('contact_list').innerHTML + '<hr><p onclick="changeContact(this.innerHTML)">' + contact_name.value + '</p>';
+          document.getElementById('contact_list').innerHTML = document.getElementById('contact_list').innerHTML + '<hr><p onclick="changeContact(this.innerHTML)">' + contact_name.value + '</p>&nbsp;&nbsp;<span onclick="delcontact(\'' + contact_name.value + '\')">X</span>';
           document.getElementById('contact_name').value = "";
           document.getElementById('contact_pubkey').value = "";
           dropMenu();
       }
+       function delcontact(id) {
+          if(id != 'Me'){
+            var command = "delcontact " + id;
+            s.send(command);
+            var r = '<hr><p onclick="changeContact(this.innerHTML)">' + id + '</p>&nbsp;&nbsp;<span onclick="delcontact(\'' + id + '\')">X</span>';
+            document.getElementById('contact_list').innerHTML = document.getElementById('contact_list').innerHTML.replace(r, '');
+          }
+          else{
+            alert("Cannot delete your own contact.");
+          }
+      }
        function changeContact(ct) {
         	contact = ct;
-        	alert(contact);
+        	alert('Now sending messages to: ' + contact);
       }
       function dropMenu() {
         if(document.getElementById('contact_menu').style.display=='block') { 
@@ -65,7 +88,7 @@
             z += '0';
         }       
         z += '<br>';
-        document.getElementsByTagName("body")[0].innerHTML = '<div style="word-wrap: break-word; word-break: break-all;" align="center">'
+        document.getElementsByTagName("body")[0].innerHTML = '<div style="word-wrap: break-word; word-break: break-all;" align="center">';
         for(i = 0; i < 30; i++){
             document.getElementsByTagName("body")[0].innerHTML = document.getElementsByTagName("body")[0].innerHTML + z;
         }
@@ -177,15 +200,18 @@
           </div>
           <div id="contact_list">
           {% for contact in contacts %}
-            <hr>
-            <p onclick="changeContact(this.innerHTML)">{{ contact }}</p>
+            <hr><p onclick="changeContact(this.innerHTML)">{{ contact }}</p>&nbsp;&nbsp;<span onclick="delcontact('{{contact}}')">X</span>
           {% endfor %}
           </div>
       </div>
       <div class='chatmsgs' id='msgbox'>
           <p style="word-wrap: break-word; word-break: break-all; font-size: 10px;">Your Public Key: {{ pubkey }}</p><br>
-          <span id="stat">Essence Status: Connecting..</span><span onclick="shred()">&nbsp;&nbsp;Shred</span>
-          <hr sty;e = "background-color: black; height: 1px; border: 0;">
+          <span id="stat">Essence Status: Connecting..</span><span onclick="shred()">&nbsp;&nbsp;Shred</span><span onclick="clearmsgs()">&nbsp;&nbsp;Clear</span>
+          <hr style = "background-color: black; height: 1px; border: 0;">
+          <div id="msgs">
+
+          </div>
+
       </div>
       <div class='chatbar'>
               <input type='submit' class='send' name='send' value='Send' onclick="send();">
