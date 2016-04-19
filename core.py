@@ -171,12 +171,10 @@ class Core():
 				f.close()
 			os.remove(file)
 
-
 	def isContact(self, name):
 		f = open('contacts.py')
 		contacts = f.read()
 		eval(contacts)
-		print contacts
 		if name in contacts.keys():
 			return True
 		else:
@@ -276,9 +274,6 @@ def me():
 		return redirect('/')
 	ID = ''.join(random.SystemRandom().choice(
 					   string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(20))
-	if essence.authenticated == False:
-		pass
-		#\p = Process(target=essence.connectionLoop, args=()).start()
 	webSocket.createID(ID)
 	contacts = essence.loadContacts()
 	return render_template('me.html', ID=ID, port=webSocket.websocket_port, pubkey = essence.pub, contacts = contacts)
