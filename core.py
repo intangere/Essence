@@ -1,5 +1,4 @@
-from flask import Flask, redirect, render_template, request, send_file, Markup, g
-import sqlite3 as lite
+from flask import Flask, redirect, render_template, request, send_file, Markup
 import time
 import os, subprocess
 import random, string, aes, base64, sys
@@ -10,7 +9,6 @@ from multiprocessing import Process
 import sys
 import os.path
 import socket
-import thread
 import time
 import select
 import random
@@ -64,8 +62,8 @@ class Core():
 	  if self.authenticated == True:
 		data = data.split('|')
 		msg = base64.b64decode(self.n.decryptParts(self.params, eval(data[3].replace('\r\n', ''))))
-		if 'Ex%s' % data[1] in contacts.values():
-		  for k,v in contacts.iteritems():
+		if 'Ex%s' % data[1] in self.contacts.values():
+		  for k,v in self.contacts.iteritems():
 			if v == 'Ex%s' % data[1]:
 			  #log('%s' % k, msg)
 			  return '%s:%s' %(k, msg)
@@ -192,8 +190,8 @@ class Core():
 		sys.exit(1)
 
 	def sendMessage(self, line):
-		if contacts.has_key(line.split(' ', 1)[1].split(' ', 1)[0]):
-		  line = 'message %s %s'.strip() % (contacts[line.split(' ', 1)[1].split(' ', 1)[0]], line.split(' ', 1)[1].split(' ', 1)[1])
+		if self.contacts.has_key(line.split(' ', 1)[1].split(' ', 1)[0]):
+		  line = 'message %s %s'.strip() % (self.contacts[line.split(' ', 1)[1].split(' ', 1)[0]], line.split(' ', 1)[1].split(' ', 1)[1])
 		reciever, params = base64.b64decode(line.split(' ', 1)[1].split(' ', 1)[0][2:]).split('|')
 		reciever, params = eval(reciever), eval(params)
 		reciever_plain = line.split(' ',1 )[1].split(' ', 1)[0].split(' ')[0][2:]

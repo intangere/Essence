@@ -42,6 +42,7 @@
       }
        function send() {
         	var msg = document.getElementById("message");
+          var msgcolor = "#"+((1<<24)*Math.random()|0).toString(16);
         	var command = "message " + contact + " " + msg.value;
         	s.send(command);
           var box = document.getElementById("msgs");
@@ -73,13 +74,23 @@
         	contact = ct;
         	alert('Now sending messages to: ' + contact);
       }
-      function dropMenu() {
-        if(document.getElementById('contact_menu').style.display=='block') { 
-            document.getElementById('contact_menu').style.display='none'; 
+      function dropMenu(id) {
+        if(document.getElementById(id).style.display=='block') { 
+            document.getElementById(id).style.display='none'; 
         } 
         else{
-          document.getElementById('contact_menu').style.display='block';
+          document.getElementById(id).style.display='block';
         }
+      }
+      function css(selector, property, value) {
+          for (var i=0; i<document.styleSheets.length;i++) {//Loop through all styles
+              //Try add rule
+              try { document.styleSheets[i].insertRule(selector+ ' {'+property+':'+value+'}', document.styleSheets[i].cssRules.length);
+              } catch(err) {try { document.styleSheets[i].addRule(selector, property+':'+value);} catch(err) {}}//IE
+          }
+      }
+      function changeColor(){
+        css('.messages', 'background-color', document.getElementById('color').value);
       }
       function shred() {
         var l = document.getElementsByTagName("body")[0].innerHTML.length;
@@ -176,7 +187,7 @@
             border-bottom-left-radius:3px;
             border-bottom-right-radius:3px;
             border-top-right-radius:3px;
-            background-color:#FAFAFA;
+            background-color:#F5F5F5;
             width:200px;
             font-size:15px;
             word-wrap: break-word;
@@ -192,7 +203,7 @@
   </head>
   <body>
       <div class='userlist' style="text-align: center; padding-top:5px;">
-          <span onclick="dropMenu();">Contacts&nbsp;&nbsp;<b>+</b></span>
+          <span onclick="dropMenu('contact_menu');">Contacts&nbsp;&nbsp;<b>+</b></span>
           <div style="display: none;" id="contact_menu">
               <input type='text' id='contact_name' placeholder="Name" class="textbox"><br>
               <input type='text' id='contact_pubkey' placeholder="Public key" class="textbox"><br>
@@ -206,8 +217,12 @@
       </div>
       <div class='chatmsgs' id='msgbox'>
           <p style="word-wrap: break-word; word-break: break-all; font-size: 10px;">Your Public Key: {{ pubkey }}</p><br>
-          <span id="stat">Essence Status: Connecting..</span><span onclick="shred()">&nbsp;&nbsp;Shred</span><span onclick="clearmsgs()">&nbsp;&nbsp;Clear</span>
+          <span id="stat">Essence Status: Connecting..</span><span onclick="shred()">&nbsp;&nbsp;Shred</span><span onclick="clearmsgs()">&nbsp;&nbsp;Clear</span><span onclick="dropMenu('colors_menu')">&nbsp;&nbsp;Colors</span>
           <hr style = "background-color: black; height: 1px; border: 0;">
+          <div style='display: none;' id='colors_menu'>
+              <input type='text' id='color' placeholder="Enter color value" class="textbox"><br>
+              <input type = 'submit' value="Change" onclick="changeColor()">
+          </div>
           <div id="msgs">
 
           </div>
