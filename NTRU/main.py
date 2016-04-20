@@ -57,23 +57,23 @@ class NTRU(object):
 				return n
 
 	def generateNTRUKeys(self):
+		msg = [1,10,50,60,70]
 		while True:
 			params = [7, self.RandomPrime(10, 99), self.RandomPrime(100000, 999999)]
 			ntruObj = Ntru(params[0], params[1], params[2])
 			ntruObj.genPublicKey(self.f,self.g,self.d)
-			msg = [1,10,50,60,70]
 			encMsg = self.encryptUsingPubKey(params, ntruObj.getPublicKey(), msg) 
 			if msg == self.decryptUsingPrivKey(params, encMsg):
 				return ntruObj.getPublicKey(), params
 				break
 
 	def generateNTRUKeysAlpha(self):
+		msg = [1,10,50,60,70]
 		while True:
 			try:
 				params = [7, self.RandomPrime(10, 99), self.RandomPrime(100000, 999999)]
 				ntruObj = Ntru(params[0], params[1], params[2])
 				ntruObj.genPublicKey(self.f,self.g,self.d)
-				msg = [1,10,50,60,70]
 				encMsg = self.encryptUsingPubKey(params, ntruObj.getPublicKey(), msg) 
 				if msg == self.decryptUsingPrivKey(params, encMsg):
 					return ntruObj.getPublicKey(), self.f, params, self.g #params
@@ -97,8 +97,7 @@ class NTRU(object):
 		i = 0
 		t = 0
 		p = 0
-		split = []
-		split.append([])
+		split = [[]]
 		while i < len(msg):
 			split[p].append(msg[i])
 			if t == nth:
@@ -113,21 +112,18 @@ class NTRU(object):
 		return split
 
 	def encryptParts(self, params, pub, parts):
-		encryptedParts = []
-		for part in parts:
-			partIdxs = [self.idxs[x] for x in part]
-			encryptedParts.append(self.encryptUsingPubKey(params, pub, partIdxs))
+		ntruObj = Ntru(params[0], params[1],params[2])
+		ntruObj.setPublicKey(pub)
+		encryptedParts = map(lambda part: ntruObj.encrypt(map(self.idxs.get, part), self.ranPol), parts)
 		return encryptedParts
 
 	def decryptParts(self, params, parts):
-		decryptedParts = []
-		message = ""
-		for part in parts:
-			decryptedParts.append(self.decryptUsingPrivKey(params, part))
-		#print decryptedParts
-		for decryptedPart in decryptedParts:
-			for x in decryptedPart:
-				message = ''.join([message, self.ridxs[x]]) 
+		ntruObj = Ntru(params[0], params[1],params[2])
+		ntruObj.genPublicKey(self.f,self.g,self.d)
+		decryptedParts = map(lambda part: ntruObj.decrypt(part), parts)
+		message = map(lambda part: map(str, map(self.ridxs.get, part)), decryptedParts)
+		message = ''.join(map(lambda part: ''.join(part), message))
+		message = message[:-1] if message[-1] == '.' else message
 		return message
 
 
